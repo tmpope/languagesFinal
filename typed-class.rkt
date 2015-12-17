@@ -120,10 +120,10 @@
 
 ;; ----------------------------------------
 
-(define typecheck-expr : (ExprI (listof ClassT) Type Type -> Type)
-  (lambda (expr t-classes arg-type this-type)
+(define typecheck-expr : (ExprI (listof ClassT) Type Type boolean -> Type)
+  (lambda (expr t-classes arg-type this-type method)
     (local [(define (recur expr)
-              (typecheck-expr expr t-classes arg-type this-type))
+              (typecheck-expr expr t-classes arg-type this-type method))
             (define (typecheck-nums l r)
               (type-case Type (recur l)
                 [numT ()
@@ -135,8 +135,8 @@
         [numI (n) (numT)]
         [plusI (l r) (typecheck-nums l r)]
         [multI (l r) (typecheck-nums l r)]
-        [argI () arg-type]
-        [thisI () this-type]
+        [argI () (if method arg-type (type-error expr "allowed outside method body"))]
+        [thisI () (if method this-type (type-error expr "allowed outside method body"))]
         [newI (class-name exprs)
               (local [(define arg-types (map recur exprs))
                       (define field-types
@@ -202,7 +202,7 @@
   (type-case MethodT method
     [methodT (name arg-type result-type body-expr)
              (if (is-subtype? (typecheck-expr body-expr t-classes
-                                              arg-type this-type)
+                                              arg-type this-type true)
                               result-type
                               t-classes)
                  (values)
@@ -244,7 +244,7 @@
     (map (lambda (t-class)
            (typecheck-class t-class t-classes))
          t-classes)
-    (typecheck-expr a t-classes (numT) (objT 'bad))))
+    (typecheck-expr a t-classes (numT) (objT 'bad) false)))
 
 ;; ----------------------------------------
 
@@ -294,6 +294,12 @@
   (test (typecheck (multI (numI 1) (numI 2))
                    empty)
         (numT))
+  (test/exn (typecheck (thisI)
+                   empty)
+        "no type")
+  (test/exn (typecheck (argI)
+                   empty)
+        "no type")
 
   (test/exn (typecheck-posn (sendI (numI 10) 'mdist (numI 0)))
             "no type")

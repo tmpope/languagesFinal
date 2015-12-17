@@ -10,6 +10,9 @@
   [thisC]
   [newC (class-name : symbol)
         (args : (listof ExprC))]
+  [if0C (cnd : ExprC)
+        (thn : ExprC)
+        (els : ExprC)]
   [getC (obj-expr : ExprC)
         (field-name : symbol)]
   [setC (obj-expr : ExprC)
@@ -95,6 +98,11 @@
         [multC (l r) (num* (recur l) (recur r))]
         [thisC () this-val]
         [argC () arg-val]
+        [if0C (cnd thn els)
+              (type-case Value (recur cnd)
+                [numV (n) (if (= n 0) (recur thn) (recur els))]
+                [else
+                 (error 'interp "not a number")])]
         [newC (class-name field-exprs)
               (local [(define c (find-class class-name classes))
                       (define vals (map recur field-exprs))]
@@ -227,6 +235,12 @@
 
   (test (interp-posn (sendC posn27 'setY (numC 0)))
         (interp-posn posn20))
+  (test (interp-posn (if0C (numC 0) posn27 posn531))
+        (interp-posn posn27))
+  (test (interp-posn (if0C (numC 1) posn27 posn531))
+        (interp-posn posn531))
+  (test/exn (interp-posn (if0C posn27 posn27 posn531))
+        "not a number")
   
   (test/exn (interp-posn (plusC (numC 1) posn27))
             "not a number")

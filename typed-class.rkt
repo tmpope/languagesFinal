@@ -150,6 +150,10 @@
                                       field-types)))
                     (objT class-name)
                     (type-error expr "field type mismatch")))]
+        [if0I (cnd thn els)
+              (type-case Type (recur cnd)
+                [numT () (combine-type (recur thn) (recur els) expr t-classes)]
+                [else (type-error cnd "number")])]
         [getI (obj-expr field-name)
               (type-case Type (recur obj-expr)
                 [objT (class-name)
@@ -195,6 +199,13 @@
                                   method-name
                                   arg-expr arg-type
                                   t-classes))]))))
+
+(define (combine-type t1 t2 expr t-classes)
+  (if (is-subtype? t1 t2 t-classes)
+      t2
+      (if (is-subtype? t2 t1 t-classes)
+          t1
+          (type-error expr "t1"))))
 
 (define (typecheck-send [class-name : symbol]
                         [method-name : symbol]
@@ -310,6 +321,16 @@
         (numT))
   (test (typecheck-posn (setI posn27 'y (numI 2)))
         (objT 'posn))
+  (test (typecheck-posn (if0I (numI 0) posn27 posn531))
+        (objT 'posn))
+  (test (typecheck-posn (if0I (numI 0) posn531 posn27))
+        (objT 'posn))
+  (test (typecheck-posn (if0I (numI 0) posn531 posn531))
+        (objT 'posn3D))
+  (test/exn (typecheck-posn (if0I posn27 posn531 posn531))
+        "no type")
+  (test/exn (typecheck-posn (if0I (numI 0) posn531 (numI 0)))
+        "no type")
   (test/exn (typecheck-posn (setI posn27 'y posn531))
         "no type")
   (test/exn (typecheck-posn (setI posn27 'k (numI 2)))

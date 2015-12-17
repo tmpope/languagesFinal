@@ -13,6 +13,9 @@
          (rhs : ExprI)]
   [argI]
   [thisI]
+  [if0I (cnd : ExprI)
+        (thn : ExprI)
+        (els : ExprI)]
   [newI (class-name : symbol)
         (args : (listof ExprI))]
   [getI (obj-expr : ExprI)
@@ -54,6 +57,8 @@
             (newC class-name (map recur field-exprs))]
       [getI (expr field-name)
             (getC (recur expr) field-name)]
+      [if0I (cnd thn els)
+            (if0C (recur cnd) (recur thn) (recur els))]
       [setI (expr field-name new-val)
             (setC (recur expr) field-name (recur new-val))]
       [sendI (expr method-name arg-expr)
@@ -77,6 +82,8 @@
         (argC))
   (test (expr-i->c (thisI) 'object)
         (thisC))
+  (test (expr-i->c (if0I (numI 0) (numI 1) (numI 2)) 'object)
+        (if0C (numC 0) (numC 1) (numC 2)))
   (test (expr-i->c (newI 'object (list (numI 1))) 'object)
         (newC 'object (list (numC 1))))
   (test (expr-i->c (getI (numI 1) 'x) 'object)

@@ -152,7 +152,7 @@
                     (type-error expr "field type mismatch")))]
         [if0I (cnd thn els)
               (type-case Type (recur cnd)
-                [numT () (combine-type (recur thn) (recur els) expr t-classes)]
+                [numT () (combine-type (recur thn) (recur els) thn t-classes)]
                 [else (type-error cnd "number")])]
         [getI (obj-expr field-name)
               (type-case Type (recur obj-expr)
@@ -201,11 +201,23 @@
                                   t-classes))]))))
 
 (define (combine-type t1 t2 expr t-classes)
-  (if (is-subtype? t1 t2 t-classes)
-      t2
-      (if (is-subtype? t2 t1 t-classes)
-          t1
-          (type-error expr "t1"))))
+  (cond
+    [(is-subtype? t1 t2 t-classes) t2]
+    [(is-subtype? t2 t1 t-classes) t1]
+    [else (type-case Type t1
+            [objT (name1)
+                  (type-case Type t2
+                    [objT (name2) (least-upper-bound name1 name2 t-classes)]
+                    [numT () (type-error expr (to-string t2))])]
+            [numT () (type-error expr (to-string t2))])]))
+
+(define (least-upper-bound name1 name2 t-classes)
+  (type-case ClassT (find-classT name1 t-classes)
+    [classT (name super-name fields methods)
+            (cond
+              [(is-subclass? name2 super-name t-classes) (objT super-name)]
+              [else (least-upper-bound super-name name2 t-classes)])]))
+
 
 (define (typecheck-send [class-name : symbol]
                         [method-name : symbol]
@@ -301,6 +313,7 @@
   
   (define posn27 (newI 'posn (list (numI 2) (numI 7))))
   (define posn531 (newI 'posn3D (list (numI 5) (numI 3) (numI 1))))
+  (define squ27 (newI 'square (list (newI 'posn (list (numI 2) (numI 7))))))
 
   (test (typecheck-posn (sendI posn27 'mdist (numI 0)))
         (numT))
@@ -327,9 +340,15 @@
         (objT 'posn))
   (test (typecheck-posn (if0I (numI 0) posn531 posn531))
         (objT 'posn3D))
+  (test (typecheck-posn (if0I (numI 0) posn531 squ27))
+        (objT 'object))
   (test/exn (typecheck-posn (if0I posn27 posn531 posn531))
         "no type")
   (test/exn (typecheck-posn (if0I (numI 0) posn531 (numI 0)))
+        "no type")
+  (test/exn (typecheck-posn (if0I (numI 0) (numI 0) posn531))
+        "no type")
+  (test/exn (typecheck-posn (if0I posn531 (numI 0) (numI 0)))
         "no type")
   (test/exn (typecheck-posn (setI posn27 'y posn531))
         "no type")

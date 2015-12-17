@@ -49,6 +49,10 @@
    [(s-exp-match? '{get ANY SYMBOL} s)
     (getI (parse (second (s-exp->list s)))
           (s-exp->symbol (third (s-exp->list s))))]
+   [(s-exp-match? '{set ANY SYMBOL ANY} s)
+    (setI (parse (second (s-exp->list s)))
+          (s-exp->symbol (third (s-exp->list s)))
+          (parse (fourth (s-exp->list s))))]
    [(s-exp-match? '{send ANY SYMBOL ANY} s)
     (sendI (parse (second (s-exp->list s)))
            (s-exp->symbol (third (s-exp->list s)))
@@ -73,6 +77,8 @@
         (newI 'posn (list (numI 1) (numI 2))))
   (test (parse '{get 1 x})
         (getI (numI 1) 'x))
+  (test (parse '{set 1 x 3})
+        (setI (numI 1) 'x (numI 3)))
   (test (parse '{send 1 m 2})
         (sendI (numI 1) 'm (numI 2)))
   (test (parse '{super m 1})
@@ -119,6 +125,21 @@
         `object)
 
  (test (interp-prog 
+        (list
+         '{class posn extends object
+                 {x y}
+                 {mdist {+ {get this x} {get this y}}}
+                 {addDist {+ {send arg mdist 0}
+                             {send this mdist 0}}}}
+         
+         '{class posn3D extends posn
+                 {z}
+                 {mdist {+ {get this z} 
+                           {super mdist arg}}}})
+        
+        '{send {new posn3D 5 3 1} addDist {new posn 2 7}})
+       '18)
+  (test (interp-prog 
         (list
          '{class posn extends object
                  {x y}

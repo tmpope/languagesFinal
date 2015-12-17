@@ -162,6 +162,20 @@
                         (type-case FieldT field
                           [fieldT (name type) type]))]
                 [else (type-error obj-expr "object")])]
+        [setI (obj-expr field-name new-val)
+              (type-case Type (recur obj-expr)
+                [objT (class-name)
+                      (local [(define t-class
+                                (find-classT class-name t-classes))
+                              (define field
+                                (find-field-in-tree field-name
+                                                    t-class
+                                                    t-classes))]
+                        (type-case FieldT field
+                          [fieldT (name type) (if (is-subtype? (recur new-val) type t-classes)
+                                                  (objT class-name)
+                                                  (type-error obj-expr "valid field"))]))]
+                [else (type-error obj-expr "object")])]
         [sendI (obj-expr method-name arg-expr)
                (local [(define obj-type (recur obj-expr))
                        (define arg-type (recur arg-expr))]
@@ -294,6 +308,14 @@
   (test (typecheck (multI (numI 1) (numI 2))
                    empty)
         (numT))
+  (test (typecheck-posn (setI posn27 'y (numI 2)))
+        (objT 'posn))
+  (test/exn (typecheck-posn (setI posn27 'y posn531))
+        "no type")
+  (test/exn (typecheck-posn (setI posn27 'k (numI 2)))
+        "not found")
+  (test/exn (typecheck-posn (getI posn27 'k))
+        "not found")
   (test/exn (typecheck (thisI)
                    empty)
         "no type")
@@ -315,6 +337,9 @@
                        empty)
             "no type")
   (test/exn (typecheck (getI (numI 1) 'x)
+                       empty)
+            "no type")
+  (test/exn (typecheck (setI (numI 1) 'x (numI 0))
                        empty)
             "no type")
   (test/exn (typecheck (numI 10)

@@ -17,6 +17,9 @@
         (args : (listof ExprI))]
   [getI (obj-expr : ExprI)
         (field-name : symbol)]
+  [setI (obj-expr : ExprI)
+        (field-name : symbol)
+        (new-val : ExprI)]
   [sendI (obj-expr : ExprI)
          (method-name : symbol)
          (arg-expr : ExprI)]
@@ -51,6 +54,8 @@
             (newC class-name (map recur field-exprs))]
       [getI (expr field-name)
             (getC (recur expr) field-name)]
+      [setI (expr field-name new-val)
+            (setC (recur expr) field-name (recur new-val))]
       [sendI (expr method-name arg-expr)
              (sendC (recur expr)
                     method-name
@@ -76,6 +81,8 @@
         (newC 'object (list (numC 1))))
   (test (expr-i->c (getI (numI 1) 'x) 'object)
         (getC (numC 1) 'x))
+  (test (expr-i->c (setI (numI 1) 'x (numI 0)) 'object)
+        (setC (numC 1) 'x (numC 0)))
   (test (expr-i->c (sendI (numI 1) 'mdist (numI 2)) 'object)
         (sendC (numC 1) 'mdist (numC 2)))
   (test (expr-i->c (superI 'mdist (numI 2)) 'posn)
@@ -98,9 +105,17 @@
     (methodC 'mdist
              (plusC (getC (thisC) 'z)
                     (ssendC (thisC) 'posn 'mdist (argC)))))
+  (define posn3d-update-i-method
+    (methodI 'update
+             (setI (thisI) 'z (argI))))
+  (define posn3d-update-c-method
+    (methodC 'update
+             (setC (thisC) 'z (argC))))
 
   (test (method-i->c posn3d-mdist-i-method 'posn)
-        posn3d-mdist-c-method))
+        posn3d-mdist-c-method)
+  (test (method-i->c posn3d-update-i-method 'posn)
+        posn3d-update-c-method))
 
 ;; ----------------------------------------
 
